@@ -6,7 +6,7 @@
 //////////////////////////////////Utilities///////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static void kill(std::unique_ptr<GameObject>& target) {
+static void Destroy(std::unique_ptr<GameObject>& target) {
     target->GetGameWorld().AddObject(
         std::make_unique<Explosion>(
             IMGID_EXPLOSION, // image id
@@ -24,8 +24,8 @@ static void kill(std::unique_ptr<GameObject>& target) {
     target->GetGameWorld().IncreaseScore(target->GetScore());
 }
 
-static void kill(std::unique_ptr<GameObject>&& target) {
-    kill(target);
+static void Destroy(std::unique_ptr<GameObject>&& target) {
+    Destroy(target);
     target.release();
 }
 
@@ -265,7 +265,7 @@ void BlueBullet::Update() {
                     obj->SetHealth(obj->GetHealth() - this->GetDamage());
                     this->SetIsDead();
                     if (obj->GetIsDead()) {
-                        kill(obj);
+                        Destroy(obj);
                     }
                     return;
                 }
@@ -289,7 +289,7 @@ void BlueBullet::Update() {
                     obj->SetHealth(obj->GetHealth() - this->GetDamage());
                     this->SetIsDead();
                     if (obj->GetIsDead()) {
-                        kill(obj);
+                        Destroy(obj);
                     }
                     return;
                 }
@@ -330,7 +330,7 @@ void Meteor::Update() {
             ObjectType type = obj->GetType();
             if (type == TypeAlphaShip || type == TypeSigmaShip || type == TypeOmegaShip) {
                 if (*obj & *this) {
-                    kill(obj);                     
+                    Destroy(obj);                     
                     return;
                 }
             }
@@ -351,7 +351,7 @@ void Meteor::Update() {
             ObjectType type = obj->GetType();
             if (type == TypeAlphaShip || type == TypeSigmaShip || type == TypeOmegaShip) {
                 if (*obj & *this) {
-                    kill(obj);
+                    Destroy(obj);
                     return;
                 }
             }
@@ -393,7 +393,7 @@ void RedBullet::Update() {
         this->MoveTo(this->GetX(), this->GetY() - 6);
     } else if (this->GetDirection() == 162) {
         this->MoveTo(this->GetX() + 2, this->GetY() - 6);
-    } else if (this->GetDirection() == 192) {
+    } else if (this->GetDirection() == 198) {
         this->MoveTo(this->GetX() - 2, this->GetY() - 6);
     }
 
@@ -411,8 +411,8 @@ void RedBullet::Update() {
 /////////////////////////////////EnemyShip////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 EnemyShip::EnemyShip(int imageID, int x, int y, int direction, int layer, 
-        double size, GameWorld& gameWorld, ObjectType type, int health, int damage, int speed, 
-        int energy, int score, int time, int strategy): 
+        double size, GameWorld& gameWorld, ObjectType type, int health, 
+        int damage, int speed, int energy, int score, int time, int strategy): 
     GameObject(imageID, x, y, direction, layer, size, gameWorld,
         type, health, damage, speed, energy, score), 
     m_time(time), m_strategy(strategy) { }
@@ -433,8 +433,7 @@ void EnemyShip::SetStrategy(int strategy) {
     this->m_strategy = strategy;
 }
 
-bool EnemyShip::CheckCollision() {
-    // Check for collision
+bool EnemyShip::Collapse() {
     std::for_each(this->GetGameWorld().GetObjects().begin(), 
         this->GetGameWorld().GetObjects().end(), 
         [this](std::unique_ptr<GameObject>& obj) {
@@ -447,6 +446,10 @@ bool EnemyShip::CheckCollision() {
                     this->SetHealth(this->GetHealth() - obj->GetDamage());                     
                     obj->SetIsDead();
                 }
+            } else if (type == TypeMeteor) {
+                if (*obj & *this) {
+                    this->SetIsDead();
+                }
             }
         }
     );
@@ -455,66 +458,14 @@ bool EnemyShip::CheckCollision() {
             this->GetGameWorld().m_player->GetHealth() - 20);
         this->SetIsDead();
     }
-
-    // Destroyed by the player
     if (this->GetIsDead()) {
-        kill(std::unique_ptr<GameObject>(this));
+        Destroy(std::unique_ptr<GameObject>(this));
         return true;
     }
-
     return false;
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-/////////////////////////////////AlphaShip////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-AlphaShip::AlphaShip(int imageID, int x, int y, int direction, int layer, 
-        double size, GameWorld& gameWorld, int health, int damage, int speed): 
-    EnemyShip(imageID, x, y, direction, layer, size, gameWorld, 
-        ObjectType::TypeAlphaShip, health, damage, speed, 25, 50, 0, 180) {}
-
-void AlphaShip::Update() {
-    // Check if the ship is dead
-    if (this->GetIsDead()) {
-        return;
-    }
-
-    // Check if the ship is out of the screen
-    if (this->GetY() < 0) {
-        this->SetIsDead();
-        return;
-    }
-
-    // Check if the ship hit the player or his bullets
-   if (this->CheckCollision()) {
-        return;
-    }
-
-    // Attack the player
-    if (abs(this->GetX() - this->GetGameWorld().m_player->GetX()) <= 10) {
-        if (this->GetEnergy() >= 25) {
-            if (randInt(1, 100) <= 25) {
-                this->SetEnergy(this->GetEnergy() - 25);
-                this->GetGameWorld().AddObject(std::make_unique<RedBullet>(
-                    IMGID_RED_BULLET, // image id
-                    this->GetX(), this->GetY() - 50, // x, y
-                    180, // direction
-                    1, // layer
-                    0.5, // size
-                    this->GetGameWorld(), // game world
-                    this->GetDamage() // damage
-                ));
-            }
-        }
-    }
-
-    // Reset the ship's energy
-    if (this->GetEnergy() < 25) {
-        this->SetEnergy(this->GetEnergy() + 1);
-    }
-
-    // Generate new strategy
+void EnemyShip::Choose() {
     if (this->GetTime() <= 0) {
         int r = randInt(1, 3);
         if (r == 1) {
@@ -532,8 +483,9 @@ void AlphaShip::Update() {
         this->SetStrategy(198);
         this->SetTime(randInt(10, 50)); 
     }
+}
 
-    // Move the ship
+void EnemyShip::Move() {
     this->SetTime(this->GetTime() - 1);
     if (this->GetStrategy()== 180) {
         this->MoveTo(this->GetX(), this->GetY() - this->GetSpeed());
@@ -542,23 +494,9 @@ void AlphaShip::Update() {
     } else if (this->GetStrategy() == 162) {
         this->MoveTo(this->GetX() + this->GetSpeed(), this->GetY() - this->GetSpeed());
     } 
-
-    // Recheck if the ship hit the player or his bullets
-    if (this->CheckCollision()) {
-        return;
-    }
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-/////////////////////////////////SigmaShip////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-SigmaShip::SigmaShip(int imageID, int x, int y, int direction, int layer, 
-        double size, GameWorld& gameWorld, int health, int speed): 
-    EnemyShip(imageID, x, y, direction, layer, size, gameWorld, 
-        ObjectType::TypeAlphaShip, health, 0, speed, 0, 100, 0, 180) {}
-
-void SigmaShip::Update() {
+void EnemyShip::Update() {
     // Check if the ship is dead
     if (this->GetIsDead()) {
         return;
@@ -571,8 +509,96 @@ void SigmaShip::Update() {
     }
 
     // Check if the ship hit the player or his bullets
+    if (this->Collapse()) {
+        this->Rebirth();
+        return;
+    }
 
+    // Attack the player
+    this->Attack();
+
+    // Fuel up energy
+    this->Refuel();
+
+    // Generate new strategy
+    this->Choose();
+
+    // Move the ship
+    this->Move();
+
+    // Recheck if the ship hit the player or his bullets
+    if (this->Collapse()) {
+        this->Rebirth();
+        return;
+    }        
 }
+
+//////////////////////////////////////////////////////////////////////////
+/////////////////////////////////AlphaShip////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+AlphaShip::AlphaShip(int imageID, int x, int y, int direction, int layer, 
+        double size, GameWorld& gameWorld, int health, int damage, int speed): 
+    EnemyShip(imageID, x, y, direction, layer, size, gameWorld, 
+        ObjectType::TypeAlphaShip, health, damage, speed, 25, 50, 0, 180) {}
+
+void AlphaShip::Rebirth() { }
+
+void AlphaShip::Attack() { 
+    if (abs(this->GetX() - this->GetGameWorld().m_player->GetX()) <= 10) {
+        if (this->GetEnergy() >= 25) {
+            if (randInt(1, 100) <= 25) {
+                this->SetEnergy(this->GetEnergy() - 25);
+                this->GetGameWorld().AddObject(std::make_unique<RedBullet>(
+                    IMGID_RED_BULLET, // image id
+                    this->GetX(), this->GetY() - 50, // x, y
+                    180, // direction
+                    1, // layer
+                    0.5, // size
+                    this->GetGameWorld(), // game world
+                    this->GetDamage() // damage
+                ));
+            }
+        }
+    }
+}
+
+void AlphaShip::Refuel() {
+    if (this->GetEnergy() < 25) {
+        this->SetEnergy(this->GetEnergy() + 1);
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+/////////////////////////////////SigmaShip////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+SigmaShip::SigmaShip(int imageID, int x, int y, int direction, int layer, 
+        double size, GameWorld& gameWorld, int health, int speed): 
+    EnemyShip(imageID, x, y, direction, layer, size, gameWorld, 
+        ObjectType::TypeAlphaShip, health, 0, speed, 0, 100, 0, 180) {}
+
+void SigmaShip::Rebirth() {
+    if (randInt(1, 100) <= 20) {
+        this->GetGameWorld().AddObject(std::make_unique<HealthWidget>(
+            IMGID_HP_RESTORE_GOODIE, // image id
+            this->GetX(), this->GetY(), // x, y
+            0, // direction
+            2, // layer
+            0.5, // size
+            this->GetGameWorld() // game world
+        ));
+    }
+}
+
+void SigmaShip::Attack() {
+    if (abs(this->GetX() - this->GetGameWorld().m_player->GetX()) <= 10) {
+        this->SetStrategy(180);
+        this->SetTime(WINDOW_HEIGHT);
+        this->SetSpeed(10);
+    }    
+}
+
+void SigmaShip::Refuel() { }
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -583,22 +609,113 @@ OmegaShip::OmegaShip(int imageID, int x, int y, int direction, int layer,
     EnemyShip(imageID, x, y, direction, layer, size, gameWorld, 
         ObjectType::TypeAlphaShip, health, damage, speed, 50, 200, 0, 180) {}
 
-
-void OmegaShip::Update() {
-
+void OmegaShip::Rebirth() { 
+    if (randInt(1, 100) <= 40) {
+        if (randInt(1, 100) <= 80) {
+            this->GetGameWorld().AddObject(std::make_unique<UpgradeWidget>(
+                IMGID_POWERUP_GOODIE, // image id
+                this->GetX(), this->GetY(), // x, y
+                0, // direction
+                2, // layer
+                0.5, // size
+                this->GetGameWorld() // game world
+            ));
+        } else {
+            this->GetGameWorld().AddObject(std::make_unique<MeteorWidget>(
+                IMGID_METEOR_GOODIE, // image id
+                this->GetX(), this->GetY(), // x, y
+                0, // direction
+                2, // layer
+                0.5, // size
+                this->GetGameWorld() // game world
+            ));
+        }
+    }
 }
 
+void OmegaShip::Attack() { 
+    if (this->GetEnergy() >= 50) {
+        this->SetEnergy(this->GetEnergy() - 50);
+        this->GetGameWorld().AddObject(std::make_unique<RedBullet>(
+            IMGID_RED_BULLET, // image id
+            this->GetX(), this->GetY() - 50, // x, y
+            162, // direction
+            1, // layer
+            0.5, // size
+            this->GetGameWorld(), // game world
+            this->GetDamage() // damage
+        ));
+        this->GetGameWorld().AddObject(std::make_unique<RedBullet>(
+            IMGID_RED_BULLET, // image id
+            this->GetX(), this->GetY() - 50, // x, y
+            198, // direction
+            1, // layer
+            0.5, // size
+            this->GetGameWorld(), // game world
+            this->GetDamage() // damage
+        ));        
+    }
+}
+
+void OmegaShip::Refuel() { 
+    if (this->GetEnergy() < 50) {
+        this->SetEnergy(this->GetEnergy() + 1);
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+/////////////////////////////////SnackWidget//////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+SnackWidget::SnackWidget(int imageID, int x, int y, int direction, int layer, 
+        double size, GameWorld& gameWorld, ObjectType type, int health, 
+        int damage, int speed, int energy, int score): 
+    GameObject(imageID, x, y, direction, layer, size, gameWorld, 
+        type, health, damage, speed, energy, score) {}
+
+void SnackWidget::Update() {
+    // Check if the widget is dead
+    if (this->GetIsDead()) {
+        return;
+    }
+
+    // Check if the widget is out of the screen
+    if (this->GetY() < 0) {
+        this->SetIsDead();
+        return;
+    }
+
+    // Check if the widget is colliding with the player
+    if (*this & *this->GetGameWorld().m_player) {
+        this->Effect();
+        this->GetGameWorld().IncreaseScore(this->GetScore());
+        this->SetIsDead();
+        return;
+    }
+
+    // Move the widget
+    this->MoveTo(this->GetX(), this->GetY() - 2);
+
+    // Recheck if the widget is colliding with the player
+    if (*this & *this->GetGameWorld().m_player) {
+        this->Effect();
+        this->GetGameWorld().IncreaseScore(this->GetScore());
+        this->SetIsDead();
+        return;
+    }        
+}
 
 //////////////////////////////////////////////////////////////////////////
 ////////////////////////////////HealthWidget//////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 HealthWidget::HealthWidget(int imageID, int x, int y, int direction, 
         int layer, double size, GameWorld& gameWorld): 
-    GameObject(imageID, x, y, direction, layer, size, gameWorld, 
+    SnackWidget(imageID, x, y, direction, layer, size, gameWorld, 
         ObjectType::TypeHealthWidget, 1, 0, 2, 0, 20) { }
 
-void HealthWidget::Update() {
-
+void HealthWidget::Effect() {
+    this->GetGameWorld().m_player->SetHealth(
+        std::min(this->GetGameWorld().m_player->GetHealth() + 50, 100));
 }
 
 
@@ -607,11 +724,12 @@ void HealthWidget::Update() {
 //////////////////////////////////////////////////////////////////////////
 UpgradeWidget::UpgradeWidget(int imageID, int x, int y, int direction, 
         int layer, double size, GameWorld& gameWorld): 
-    GameObject(imageID, x, y, direction, layer, size, gameWorld, 
+    SnackWidget(imageID, x, y, direction, layer, size, gameWorld, 
         ObjectType::TypeUpgradeWidget, 1, 0, 2, 0, 20) { }
 
-void UpgradeWidget::Update() {
-
+void UpgradeWidget::Effect() {
+    this->GetGameWorld().m_player->SetUpgrade(
+        this->GetGameWorld().m_player->GetUpgrade() + 1);
 }
 
 
@@ -620,9 +738,10 @@ void UpgradeWidget::Update() {
 //////////////////////////////////////////////////////////////////////////
 MeteorWidget::MeteorWidget(int imageID, int x, int y, int direction, 
         int layer, double size, GameWorld& gameWorld): 
-    GameObject(imageID, x, y, direction, layer, size, gameWorld, 
+    SnackWidget(imageID, x, y, direction, layer, size, gameWorld, 
         ObjectType::TypeMeteorWidget, 1, 0, 2, 0, 20) { }
 
-void MeteorWidget::Update() {
-
+void MeteorWidget::Effect() {
+    this->GetGameWorld().m_player->SetMeteor(
+        this->GetGameWorld().m_player->GetMeteor() + 1);    
 }

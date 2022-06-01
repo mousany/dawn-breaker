@@ -210,14 +210,20 @@ public:
         int, int, int, int, int, int, int);
     virtual ~EnemyShip() = default;
 
-    virtual void Update() = 0;
+    void Update() override;
 
     int GetTime() const;
     void SetTime(int);
     int GetStrategy() const;
     void SetStrategy(int);
 
-    bool CheckCollision();
+    bool Collapse();
+    void Choose();
+    void Move();
+
+    virtual void Rebirth() = 0;
+    virtual void Attack() = 0;
+    virtual void Refuel() = 0;
 
 private:
 
@@ -237,7 +243,9 @@ public:
     AlphaShip(int, int, int, int, int, double, GameWorld&, int, int, int);
     virtual ~AlphaShip() = default;
 
-    void Update() override;
+    void Rebirth() override;
+    void Attack() override;    
+    void Refuel() override;
 
 private:
 
@@ -256,7 +264,9 @@ public:
     SigmaShip(int, int, int, int, int, double, GameWorld&, int, int);
     virtual ~SigmaShip() = default;  
 
-    void Update() override;
+    void Rebirth() override;
+    void Attack() override;
+    void Refuel() override;
 
 private:
 
@@ -275,7 +285,31 @@ public:
     OmegaShip(int, int, int, int, int, double, GameWorld&, int, int, int);
     virtual ~OmegaShip() = default;
 
+    void Rebirth() override;
+    void Attack() override;
+    void Refuel() override;
+
+private:
+
+
+
+};
+
+
+//////////////////////////////////////////////////////////////////////////
+/////////////////////////////////SnackWidget//////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+class SnackWidget : public GameObject {
+
+public:
+
+    SnackWidget(int, int, int, int, int, double, GameWorld&, ObjectType, 
+        int, int, int, int, int);
+    virtual ~SnackWidget() = default;
+
     void Update() override;
+
+    virtual void Effect() = 0;
 
 private:
 
@@ -287,14 +321,14 @@ private:
 //////////////////////////////////////////////////////////////////////////
 ////////////////////////////////HealthWidget//////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-class HealthWidget : public GameObject {
+class HealthWidget : public SnackWidget {
 
 public:
 
     HealthWidget(int, int, int, int, int, double, GameWorld&);
     virtual ~HealthWidget() = default;
 
-    void Update() override;
+    void Effect() override;
 
 private:
 
@@ -305,14 +339,14 @@ private:
 //////////////////////////////////////////////////////////////////////////
 ////////////////////////////////UpgradeWidget/////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-class UpgradeWidget : public GameObject {
+class UpgradeWidget : public SnackWidget {
 
 public:
 
     UpgradeWidget(int, int, int, int, int, double, GameWorld&);
     virtual ~UpgradeWidget() = default;
 
-    void Update() override;
+    void Effect() override;
 
 private:
 
@@ -324,14 +358,14 @@ private:
 //////////////////////////////////////////////////////////////////////////
 ////////////////////////////////MeteorWidget//////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-class MeteorWidget : public GameObject {
+class MeteorWidget : public SnackWidget {
 
 public:
 
     MeteorWidget(int, int, int, int, int, double, GameWorld&);
     virtual ~MeteorWidget() = default;
 
-    void Update() override;
+    void Effect() override;
 
 private:
 
