@@ -64,7 +64,7 @@ LevelStatus GameWorld::Update() {
     });
 
     // Select ship type and add ship
-    if (onScreen < allowed) {
+    if ((onScreen < allowed) && (randInt(1, 100) <= (allowed - onScreen))) {
         int x = randInt(0, WINDOW_WIDTH - 1);
         int y = WINDOW_HEIGHT - 1;
 

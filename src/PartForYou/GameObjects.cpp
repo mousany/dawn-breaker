@@ -2,36 +2,31 @@
 
 #include "GameObjects.h"
 
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////Utilities///////////////////////////////
+//////////////////////////////////////////////////////////////////////////
 
-static std::list<GameObject> collision(GameObject& obj, std::list<GameObject>& objects) {
-    std::list<GameObject> result;
-    std::for_each(objects.begin(), objects.end(), [&](GameObject& other) {
-        if (other.GetIsDead()) {
-            return;
-        }
-        if (other & obj) {
-            result.push_back(other);
-        }
-    });
-    return result;
-}
-
-static void kill(GameObject& obj) {
-    obj.GetGameWorld().AddObject(
+static void kill(std::unique_ptr<GameObject>& target) {
+    target->GetGameWorld().AddObject(
         std::make_unique<Explosion>(
             IMGID_EXPLOSION, // image id
-            obj.GetX(), obj.GetY(), // x, y
+            target->GetX(), target->GetY(), // x, y
             0, // direction
             3, // layer
             4.5, // size
-            obj.GetGameWorld() // game world
+            target->GetGameWorld() // game world
         )
     );                        
-    obj.SetIsDead();
-    obj.GetGameWorld().m_player->SetDestroyed(
-        obj.GetGameWorld().m_player->GetDestroyed() + 1
+    target->SetIsDead();
+    target->GetGameWorld().m_player->SetDestroyed(
+        target->GetGameWorld().m_player->GetDestroyed() + 1
     );
-    obj.GetGameWorld().IncreaseScore(obj.GetScore());
+    target->GetGameWorld().IncreaseScore(target->GetScore());
+}
+
+static void kill(std::unique_ptr<GameObject>&& target) {
+    kill(target);
+    target.release();
 }
 
 
@@ -264,28 +259,13 @@ void BlueBullet::Update() {
             if (obj->GetIsDead()) {
                 return;
             }
-
             ObjectType type = obj->GetType();
             if (type == TypeAlphaShip || type == TypeSigmaShip || type == TypeOmegaShip) {
                 if (*obj & *this) {
                     obj->SetHealth(obj->GetHealth() - this->GetDamage());
                     this->SetIsDead();
                     if (obj->GetIsDead()) {
-                        this->GetGameWorld().AddObject(
-                            std::make_unique<Explosion>(
-                                IMGID_EXPLOSION, // image id
-                                obj->GetX(), obj->GetY(), // x, y
-                                0, // direction
-                                3, // layer
-                                4.5, // size
-                                this->GetGameWorld() // game world
-                            )
-                        );                        
-                        obj->SetIsDead();
-                        obj->GetGameWorld().m_player->SetDestroyed(
-                            obj->GetGameWorld().m_player->GetDestroyed() + 1
-                        );
-                        this->GetGameWorld().IncreaseScore(obj->GetScore());
+                        kill(obj);
                     }
                     return;
                 }
@@ -300,27 +280,16 @@ void BlueBullet::Update() {
     std::for_each(this->GetGameWorld().GetObjects().begin(), 
         this->GetGameWorld().GetObjects().end(), 
         [this](std::unique_ptr<GameObject>& obj) {
+            if (obj->GetIsDead()) {
+                return;
+            }            
             ObjectType type = obj->GetType();
             if (type == TypeAlphaShip || type == TypeSigmaShip || type == TypeOmegaShip) {
                 if (*obj & *this) {
                     obj->SetHealth(obj->GetHealth() - this->GetDamage());
                     this->SetIsDead();
                     if (obj->GetIsDead()) {
-                        this->GetGameWorld().AddObject(
-                            std::make_unique<Explosion>(
-                                IMGID_EXPLOSION, // image id
-                                obj->GetX(), obj->GetY(), // x, y
-                                0, // direction
-                                3, // layer
-                                4.5, // size
-                                this->GetGameWorld() // game world
-                            )
-                        );                        
-                        obj->SetIsDead();
-                        obj->GetGameWorld().m_player->SetDestroyed(
-                            obj->GetGameWorld().m_player->GetDestroyed() + 1
-                        );
-                        this->GetGameWorld().IncreaseScore(obj->GetScore());                     
+                        kill(obj);
                     }
                     return;
                 }
@@ -358,25 +327,10 @@ void Meteor::Update() {
             if (obj->GetIsDead()) {
                 return;
             }
-
             ObjectType type = obj->GetType();
             if (type == TypeAlphaShip || type == TypeSigmaShip || type == TypeOmegaShip) {
                 if (*obj & *this) {
-                    this->GetGameWorld().AddObject(
-                        std::make_unique<Explosion>(
-                            IMGID_EXPLOSION, // image id
-                            obj->GetX(), obj->GetY(), // x, y
-                            0, // direction
-                            3, // layer
-                            4.5, // size
-                            this->GetGameWorld() // game world
-                        )
-                    );                        
-                    obj->SetIsDead();     
-                    obj->GetGameWorld().m_player->SetDestroyed(
-                        obj->GetGameWorld().m_player->GetDestroyed() + 1
-                    );
-                    this->GetGameWorld().IncreaseScore(obj->GetScore());                       
+                    kill(obj);                     
                     return;
                 }
             }
@@ -391,24 +345,13 @@ void Meteor::Update() {
     std::for_each(this->GetGameWorld().GetObjects().begin(), 
         this->GetGameWorld().GetObjects().end(), 
         [this](std::unique_ptr<GameObject>& obj) {
+            if (obj->GetIsDead()) {
+                return;
+            }            
             ObjectType type = obj->GetType();
             if (type == TypeAlphaShip || type == TypeSigmaShip || type == TypeOmegaShip) {
                 if (*obj & *this) {
-                    this->GetGameWorld().AddObject(
-                        std::make_unique<Explosion>(
-                            IMGID_EXPLOSION, // image id
-                            obj->GetX(), obj->GetY(), // x, y
-                            0, // direction
-                            3, // layer
-                            4.5, // size
-                            this->GetGameWorld() // game world
-                        )
-                    );                        
-                    obj->SetIsDead();  
-                    obj->GetGameWorld().m_player->SetDestroyed(
-                        obj->GetGameWorld().m_player->GetDestroyed() + 1
-                    );
-                    this->GetGameWorld().IncreaseScore(obj->GetScore());                
+                    kill(obj);
                     return;
                 }
             }
@@ -498,7 +441,6 @@ bool EnemyShip::CheckCollision() {
             if (obj->GetIsDead()) {
                 return;
             }
-
             ObjectType type = obj->GetType();
             if (type == TypeBlueBullet) {
                 if (*obj & *this) {
@@ -516,20 +458,7 @@ bool EnemyShip::CheckCollision() {
 
     // Destroyed by the player
     if (this->GetIsDead()) {
-        this->GetGameWorld().AddObject(
-            std::make_unique<Explosion>(
-                IMGID_EXPLOSION, // image id
-                this->GetX(), this->GetY(), // x, y
-                0, // direction
-                3, // layer
-                4.5, // size
-                this->GetGameWorld() // game world
-            )
-        );              
-        this->GetGameWorld().IncreaseScore(this->GetScore());
-        this->GetGameWorld().m_player->SetDestroyed(
-            this->GetGameWorld().m_player->GetDestroyed() + 1
-        );
+        kill(std::unique_ptr<GameObject>(this));
         return true;
     }
 
