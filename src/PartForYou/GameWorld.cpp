@@ -111,10 +111,10 @@ LevelStatus GameWorld::Update() {
     }
 
     // Update all objects
+    this->m_player->Update();
     for (const std::unique_ptr<GameObject>& obj : this->m_data) {
         obj->Update();
     } 
-    this->m_player->Update();
 
     // Check if player is dead
     if (this->m_player->GetIsDead()) {
