@@ -141,19 +141,17 @@ void Player::Update() {
     }
 
     // Listen to move request
-    int nowX = this->GetX();
-    int nowY = this->GetY();
-    if (this->GetGameWorld().GetKey(KeyCode::LEFT) && nowX >= 4) {
-        this->MoveTo(nowX - 4, nowY);
+    if (this->GetGameWorld().GetKey(KeyCode::LEFT) && this->GetX() >= 4) {
+        this->MoveTo(this->GetX() - 4, this->GetY());
     } 
-    if (this->GetGameWorld().GetKey(KeyCode::RIGHT) && nowX <= WINDOW_WIDTH - 5) {
-        this->MoveTo(nowX + 4, nowY);
+    if (this->GetGameWorld().GetKey(KeyCode::RIGHT) && this->GetX() <= WINDOW_WIDTH - 5) {
+        this->MoveTo(this->GetX() + 4, this->GetY());
     }
-    if (this->GetGameWorld().GetKey(KeyCode::DOWN) && nowY >= 54) {
-        this->MoveTo(nowX, nowY - 4);
+    if (this->GetGameWorld().GetKey(KeyCode::DOWN) && this->GetY() >= 54) {
+        this->MoveTo(this->GetX(), this->GetY() - 4);
     }
-    if (this->GetGameWorld().GetKey(KeyCode::UP) && nowY <= WINDOW_HEIGHT - 5) {
-        this->MoveTo(nowX, nowY + 4);
+    if (this->GetGameWorld().GetKey(KeyCode::UP) && this->GetY() <= WINDOW_HEIGHT - 5) {
+        this->MoveTo(this->GetX(), this->GetY() + 4);
     }
 
     // Listen to shoot1 request
@@ -161,7 +159,7 @@ void Player::Update() {
         this->SetEnergy(this->GetEnergy() - 10);
         this->GetGameWorld().AddObject(std::make_unique<BlueBullet>(
             IMGID_BLUE_BULLET, // imageID
-            nowX, nowY + 50, // x, y
+            this->GetX(), this->GetY() + 50, // x, y
             0, // direction
             1, // layer
             0.5 + 0.1 * this->m_upgrade, // size
@@ -175,7 +173,7 @@ void Player::Update() {
         this->m_meteor--;
         this->GetGameWorld().AddObject(std::make_unique<Meteor>(
             IMGID_METEOR, // imageID
-            nowX, nowY + 100, // x, y
+            this->GetX(), this->GetY() + 100, // x, y
             0, // direction
             1, // layer
             2.0, // size
