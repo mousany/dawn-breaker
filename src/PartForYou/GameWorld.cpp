@@ -56,12 +56,14 @@ LevelStatus GameWorld::Update() {
     int toDestroy = required - destroyed;
     int maxOnScreen = (5 + level) / 2;
     int allowed = std::min(maxOnScreen, toDestroy);
-    int onScreen = std::count_if(this->m_data.begin(), this->m_data.end(), 
-        [](const std::unique_ptr<GameObject>& obj) {
-            return obj->GetType() == GameObject::ObjectType::TypeAlphaShip \
+    int onScreen = 0;
+    for (auto& obj: this->m_data) {
+        if (obj->GetType() == GameObject::ObjectType::TypeAlphaShip \
                 || obj->GetType() == GameObject::ObjectType::TypeSigmaShip \
-                || obj->GetType() == GameObject::ObjectType::TypeOmegaShip;
-    });
+                || obj->GetType() == GameObject::ObjectType::TypeOmegaShip) {
+            onScreen++;
+        }
+    }
 
     // Select ship type and add ship
     if ((onScreen < allowed) && (randInt(1, 100) <= (allowed - onScreen))) {
