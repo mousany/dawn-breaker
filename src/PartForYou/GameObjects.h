@@ -221,9 +221,9 @@ public:
     void Choose();
     void Move();
 
-    virtual void Rebirth() = 0;
-    virtual void Attack() = 0;
-    virtual void Refuel() = 0;
+    virtual void Rebirth();
+    virtual void Attack();
+    virtual void Refuel();
 
 private:
 

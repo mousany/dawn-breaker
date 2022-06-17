@@ -16,12 +16,13 @@ static void Destroy(std::unique_ptr<GameObject>& target) {
             4.5, // size
             target->GetGameWorld() // game world
         )
-    );                        
-    target->SetIsDead();
+    );               
     target->GetGameWorld().m_player->SetDestroyed(
         target->GetGameWorld().m_player->GetDestroyed() + 1
     );
     target->GetGameWorld().IncreaseScore(target->GetScore());
+    dynamic_cast<EnemyShip*>(target.get())->Rebirth();
+    target->SetIsDead();    
 }
 
 static void Destroy(std::unique_ptr<GameObject>&& target) {
@@ -93,6 +94,9 @@ void GameObject::SetIsDead() {
 }
 
 bool GameObject::operator&(const GameObject& other) const {
+    if (this->GetIsDead() || other.GetIsDead()) {
+        return false;
+    }
     double d = sqrt(pow(this->GetX() - other.GetX(), 2) + 
         pow(this->GetY() - other.GetY(), 2));
     return d < 30.0 * (this->GetSize() + other.GetSize());
@@ -431,6 +435,12 @@ void EnemyShip::SetStrategy(int strategy) {
     this->m_strategy = strategy;
 }
 
+void EnemyShip::Rebirth() { }
+
+void EnemyShip::Attack() { }
+
+void EnemyShip::Refuel() { }
+
 bool EnemyShip::Collapse() {
     std::for_each(this->GetGameWorld().GetObjects().begin(), 
         this->GetGameWorld().GetObjects().end(), 
@@ -508,7 +518,6 @@ void EnemyShip::Update() {
 
     // Check if the ship hit the player or his bullets
     if (this->Collapse()) {
-        this->Rebirth();
         return;
     }
 
@@ -526,7 +535,6 @@ void EnemyShip::Update() {
 
     // Recheck if the ship hit the player or his bullets
     if (this->Collapse()) {
-        this->Rebirth();
         return;
     }        
 }
@@ -573,7 +581,7 @@ void AlphaShip::Refuel() {
 SigmaShip::SigmaShip(int imageID, int x, int y, int direction, int layer, 
         double size, GameWorld& gameWorld, int health, int speed): 
     EnemyShip(imageID, x, y, direction, layer, size, gameWorld, 
-        ObjectType::TypeAlphaShip, health, 0, speed, 0, 100, 0, 180) {}
+        ObjectType::TypeSigmaShip, health, 0, speed, 0, 100, 0, 180) {}
 
 void SigmaShip::Rebirth() {
     if (randInt(1, 100) <= 20) {
@@ -605,7 +613,7 @@ void SigmaShip::Refuel() { }
 OmegaShip::OmegaShip(int imageID, int x, int y, int direction, int layer, 
         double size, GameWorld& gameWorld, int health, int damage, int speed): 
     EnemyShip(imageID, x, y, direction, layer, size, gameWorld, 
-        ObjectType::TypeAlphaShip, health, damage, speed, 50, 200, 0, 180) {}
+        ObjectType::TypeOmegaShip, health, damage, speed, 50, 200, 0, 180) {}
 
 void OmegaShip::Rebirth() { 
     if (randInt(1, 100) <= 40) {
